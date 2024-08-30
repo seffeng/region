@@ -7,28 +7,30 @@
 // 3
 // toJson();
 // 4
-// mergeDiff();
+// mergeDiff();exit;
 
 // 1
-// toKeyJson();
+// toKeyJson(); exit;
 
 // 1
-toTree();
+// toTree(); exit;
 
 // 1
-// loadXml();
+loadXml();
 
 // 转为JSON数据
 function toJson()
 {
-    $contents = file('merge-full.txt');
+    $contents = file('merge.txt');
     $items = [];
     foreach ($contents as $line => $content) {
-        $code = substr($content, 0, 6);
-        $value = substr($content, 6);
-        $items[$code] = trim($value);
+        $tmp = explode(' ', $content);
+        if (isset($tmp['0']) && isset($tmp['1'])) {
+            $code = trim($tmp['0']);
+            $value = trim($tmp['1']);
+            $items[$code] = $value;
+        }
     }
-    
     $data = [];
     ksort($items);
     foreach ($items as $code => $name) {
@@ -45,12 +47,17 @@ function toJson()
 // 转为JSON数据（父ID做为索引）
 function toKeyJson()
 {
-    $contents = file('2022.txt');
+    $contents = file('2023_1.txt');
     $items = [];
+    $codeItems = [];
     foreach ($contents as $line => $content) {
-        $code = substr($content, 0, 6);
-        $value = substr($content, 6);
-        $items[$code] = trim($value);
+        $tmp = explode(' ', $content);
+        if (isset($tmp['0']) && isset($tmp['1'])) {
+            $code = trim($tmp['0']);
+            $value = trim($tmp['1']);
+            $items[$code] = $value;
+            $codeItems[] = $code;
+        }
     }
 
     $data = [];
@@ -66,8 +73,18 @@ function toKeyJson()
            $data[0][$pCode] = $name;
        } elseif (substr($code, -2) === '00') {
            $data[$pCode][$cCode] = $name;
+       } elseif (is_numeric($code)) {
+            if (in_array($cCode, $codeItems)) {
+                $data[$cCode][$code] = $name;
+            } else {
+                $data[$pCode][$code] = $name;
+            }
        } else {
-           $data[$cCode][$code] = $name;
+           if (in_array($code, ['OLF', 'ANT', 'CAT', 'LAW', 'LAZ', 'TPA', 'CLN'])) {
+                $data['820000'][$code] = $name;
+            } else {
+                $data['810000'][$code] = $name;
+            }
        }
     }
     file_put_contents('key-json.json', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
@@ -76,12 +93,17 @@ function toKeyJson()
 // 转为树型结构
 function toTree()
 {
-    $contents = file('2023.txt');
+    $contents = file('2023_1.txt');
     $items = [];
-    foreach ($contents as $line => $content) {
-        $code = substr($content, 0, 6);
-        $value = substr($content, 6);
-        $items[$code] = trim($value);
+    $codeItems = [];
+    foreach ($contents as $content) {
+        $tmp = explode(' ', $content);
+        if (isset($tmp['0']) && isset($tmp['1'])) {
+            $code = trim($tmp['0']);
+            $value = trim($tmp['1']);
+            $items[$code] = $value;
+            $codeItems[] = $code;
+        }
     }
 
     $data = [];
@@ -94,25 +116,41 @@ function toTree()
         $c = substr($code, 2, 2); // 市
         $cCode = $p . $c . '00';
         $a = substr($code, 4, 2); // 区
-       if (substr($code, -4) === '0000') {
+        if (substr($code, -4) === '0000') {
            $data[$pCode] = [
                 'id' => $pCode,
-                'parentId' => 0,
                 'name' => $name
            ];
-       } elseif (substr($code, -2) === '00') {
+        } elseif (substr($code, -2) === '00') {
            $cItems[$pCode][$cCode] = [
                 'id' => $cCode,
-                'parentId' => $pCode,
                 'name' => $name
            ];
-       } else {
-           $aItems[$cCode][$code] = [
-                'id' => $code,
-                'parentId' => $cCode,
-                'name' => $name
-           ];
-       }
+        } elseif (is_numeric($code)) {
+           if (in_array($cCode, $codeItems)) {
+               $aItems[$cCode][$code] = [
+                    'id' => $code,
+                    'name' => $name
+               ];
+           } else {
+                $cItems[$pCode][$code] = [
+                    'id' => $code,
+                    'name' => $name
+                ];
+           }
+        } else {
+            if (in_array($code, ['OLF', 'ANT', 'CAT', 'LAW', 'LAZ', 'TPA', 'CLN'])) {
+                $cItems['820000'][$code] = [
+                    'id' => $code,
+                    'name' => $name
+                ];
+            } else {
+                $cItems['810000'][$code] = [
+                    'id' => $code,
+                    'name' => $name
+                ];
+            }
+        }
     }
 
     $tmpItems = [];
@@ -141,10 +179,14 @@ function mergeFull()
     $contents = file('merge.txt');
     $items = [];
     foreach ($contents as $line => $content) {
-        $code = substr($content, 0, 6);
-        $value = substr($content, 6);
-        $items[$code] = $code.$value;
+        $tmp = explode(' ', $content);
+        if (isset($tmp['0']) && isset($tmp['1'])) {
+            $code = trim($tmp['0']);
+            $value = trim($tmp['1']);
+            $items[$code] = $code . ' ' . $value . PHP_EOL;
+        }
     }
+    ksort($items);
     file_put_contents('merge-full.txt', implode("", $items));
 }
 
